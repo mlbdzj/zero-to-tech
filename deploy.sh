@@ -3,26 +3,29 @@ set -e
 
 # ================= 配置区 =================
 PROJECT_NAME="zero-to-tech"
-SRC_DIR="$(cd "$(dirname "$0")" && pwd)"        # 项目源码目录: ~/zero-to-tech
-NGINX_BASE="/opt/nginx"                          # Nginx docker-compose 所在目录
-TARGET_DIR="${NGINX_BASE}/html/${PROJECT_NAME}"  # 宿主机部署目标目录
-CONTAINER_NAME="nginx"                           # Nginx 容器名称
+SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
+NGINX_BASE="/opt/nginx"
+TARGET_DIR="${NGINX_BASE}/html/${PROJECT_NAME}"
+CONTAINER_NAME="nginx"
 # ==========================================
 
 echo "🚀 开始部署静态项目 ${PROJECT_NAME}..."
 
-# 1. 同步文件到 Nginx 挂载目录
+# 1. 同步文件
 echo "📂 [1/3] 同步文件到 ${TARGET_DIR}..."
 mkdir -p "${TARGET_DIR}"
-rsync -av --delete \
-    --exclude='.git' \
-    --exclude='node_modules' \
-    --exclude='deploy.sh' \
-    --exclude='.env*' \
-    "${SRC_DIR}/" "${TARGET_DIR}/"
+find "${TARGET_DIR}" -mindepth 1 -delete
+cd "${SRC_DIR}"
+for item in * .[!.]* ..?*; do
+    [ -e "$item" ] || continue
+    case "$item" in
+        .git|node_modules|deploy.sh|.env*) continue ;;
+    esac
+    cp -a "$item" "${TARGET_DIR}/"
+done
 echo "✅ 文件同步完成"
 
-# 2. 确保权限正确 (Alpine nginx 用户)
+# 2. 修正权限
 echo "🔐 [2/3] 修正文件权限..."
 chmod -R 755 "${TARGET_DIR}"
 echo "✅ 权限修正完成"
